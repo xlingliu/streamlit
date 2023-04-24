@@ -1,52 +1,55 @@
-import pandas as pd
-import datetime
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
+# import pandas as pd
+# import datetime
+# from sklearn.model_selection import train_test_split
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
+# from sklearn.linear_model import LogisticRegression
+# from sklearn.tree import DecisionTreeClassifier
 import streamlit as st
 
-data_path = 'vineyard_weather_1948-2017.csv'
-df = pd.read_csv(data_path)
+# data_path = 'vineyard_weather_1948-2017.csv'
+# df = pd.read_csv(data_path)
 
-# Only use historical data from weeks 35 to 40 of each year to control for seasonality
-df['DATE'] = pd.to_datetime(df['DATE'])  
-df = df[df['DATE'].apply(lambda x: 35 <= x.isocalendar()[1] <= 40)]
+# # Only use historical data from weeks 35 to 40 of each year to control for seasonality
+# df['DATE'] = pd.to_datetime(df['DATE'])  
+# df = df[df['DATE'].apply(lambda x: 35 <= x.isocalendar()[1] <= 40)]
     
-# Data collected is daily so it must be aggregated
-# weekly precipitation of >= 0.35 inches of rain and max temperature of <= 80 degrees f
-df.set_index('DATE', inplace=True)
-weekly_prcp = df['PRCP'].resample('W').sum() 
-weekly_tmax = df['TMAX'].resample('W').max()
-res = pd.concat([weekly_prcp, weekly_tmax], axis=1)
-res.columns = ['PRCP', 'TMAX']
+# # Data collected is daily so it must be aggregated
+# # weekly precipitation of >= 0.35 inches of rain and max temperature of <= 80 degrees f
+# df.set_index('DATE', inplace=True)
+# weekly_prcp = df['PRCP'].resample('W').sum() 
+# weekly_tmax = df['TMAX'].resample('W').max()
+# res = pd.concat([weekly_prcp, weekly_tmax], axis=1)
+# res.columns = ['PRCP', 'TMAX']
     
-# Ensure you avoid data leakage by converting the timeseries data into tabular form (t0, t-1, etc.)
-res['PRCP_t-1'] = res['PRCP'].shift(1)
-res['TMAX_t-1'] = res['TMAX'].shift(1)
-res['PRCP_t-2'] = res['PRCP'].shift(2)
-res['TMAX_t-2'] = res['TMAX'].shift(2)
-res.dropna(inplace=True)
+# # Ensure you avoid data leakage by converting the timeseries data into tabular form (t0, t-1, etc.)
+# res['PRCP_t-1'] = res['PRCP'].shift(1)
+# res['TMAX_t-1'] = res['TMAX'].shift(1)
+# res['PRCP_t-2'] = res['PRCP'].shift(2)
+# res['TMAX_t-2'] = res['TMAX'].shift(2)
+# res.dropna(inplace=True)
 
-# Labeling data
-res['storm'] = ((res['PRCP'] >= 0.35) & (res['TMAX'] <= 80)).astype(int)
+# # Labeling data
+# res['storm'] = ((res['PRCP'] >= 0.35) & (res['TMAX'] <= 80)).astype(int)
 
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(res[['PRCP_t-1', 'TMAX_t-1', 'PRCP_t-2', 'TMAX_t-2']], res['storm'], test_size=0.2, random_state=42)
+# # Split data
+# X_train, X_test, y_train, y_test = train_test_split(res[['PRCP_t-1', 'TMAX_t-1', 'PRCP_t-2', 'TMAX_t-2']], res['storm'], test_size=0.2, random_state=42)
 
-# Fit the model
-rfc = RandomForestClassifier(n_estimators=100, random_state=42)
-rfc.fit(X_train, y_train)
+# # Fit the model
+# rfc = RandomForestClassifier(n_estimators=100, random_state=42)
+# rfc.fit(X_train, y_train)
 
-# Evaluate the model
-y_pred = rfc.predict(X_test)
-tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
-specificity = tn / (tn + fp)
-# accuracy = accuracy_score(y_test, y_pred)
-# precision = precision_score(y_test, y_pred)
-sensitivity = recall_score(y_test, y_pred)
-# print("sensitivity:", recall_or_sensitivity, "specificity:", specificity)
+# # Evaluate the model
+# y_pred = rfc.predict(X_test)
+# tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+# specificity = tn / (tn + fp)
+# # accuracy = accuracy_score(y_test, y_pred)
+# # precision = precision_score(y_test, y_pred)
+# sensitivity = recall_score(y_test, y_pred)
+# # print("sensitivity:", recall_or_sensitivity, "specificity:", specificity)
+
+sensitivity = 0.25
+specificity = 0.83
 
 header = st.container()
 data = st.container()
@@ -89,8 +92,6 @@ pay_noharv_storm = storm_mold + storm_no_mold
 pay_noharv_nostorm = no_storm_no_sugar + no_storm_typical_sugar + no_storm_high_sugar
 
 def bayes(metric, prob):
-    # metric is either sens or spec
-    # prob is either prob_storm or no storm
     numerator = metric * prob
     denom = (metric * prob) + (1 - metric) * (1 - prob)
     return numerator / denom, denom
@@ -112,6 +113,10 @@ with result:
         st.text("This model provides littele help for you to make the decision.")
     else:
         st.text("You should use the model to make your decisions.")
+
+
+
+
 
 
 
